@@ -17,11 +17,21 @@ package {{.Package}}
 
 import "errors"
 
+{{if .Logrus}}
+import "github.com/sirupsen/logrus"
+{{end}}
+
 {{$nameUpper := capUpper .Name}}
 {{$nameLower := capLower .Name}}
 {{$type := concat $nameUpper "T"}}
 {{$err := concat "ErrInvalid" (capUpper .Name)}}
-{{$panic := $nameLower | printf "panic(\"invalid %s\")"}}
+
+{{$panic := ""}}
+{{if .Logrus}}
+	{{$panic = $nameUpper | printf "logrus.Fatal(\"[ENUMS] Invalid %s\")" }}
+{{else}}
+	{{$panic = $nameLower | printf "panic(\"invalid %s\")" }}
+{{end}}
 
 var {{$err}} = errors.New("invalid value is not a {{$nameLower}}")
 
@@ -191,6 +201,7 @@ var (
 	name        = flag.String("name", "Enum", "name of the enum")
 	values      = flag.String("values", "", "values comma separated")
 	variants    = &VariantsFlag{}
+	logrus      = flag.Bool("logrus", false, "use logrus.Fatal instead of panic")
 )
 
 func dieOnErr(err error) {
@@ -209,12 +220,14 @@ func main() {
 		Output   string
 		Values   []string
 		Variants []Variant
+		Logrus   bool
 	}{
 		Package:  *packageName,
 		Name:     *name,
 		Output:   *output,
 		Values:   strings.Split(*values, ","),
 		Variants: *variants,
+		Logrus:   *logrus,
 	}
 
 	capLower := func(s string) string {
