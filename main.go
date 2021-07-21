@@ -21,6 +21,18 @@ import "errors"
 import "github.com/sirupsen/logrus"
 {{end}}
 
+{{if or .MarshalText .UnmarshalText}}
+import "encoding"
+{{end}}
+
+{{if or .MarshalJSON .UnmarshalJSON}}
+import "encoding/json"
+{{end}}
+
+{{if .UnmarshalJSON}}
+import "fmt"
+{{end}}
+
 {{$nameUpper := capUpper .Name}}
 {{$nameLower := capLower .Name}}
 {{$type := concat $nameUpper "T"}}
@@ -193,6 +205,35 @@ var {{$structObj}} = {{$struct}}{
 	MustFrom{{capUpper .Name}}: {{mustFromVariantName .}},
 {{end}}
 }
+
+{{if .MarshalText}}
+func (v {{$type}}) MarshalText() ([]byte, error) {
+	return []byte(v.String()), nil
+}
+{{end}}
+
+{{if .UnmarshalText}}
+func (v *{{$type}}) UnmarshalText(text []byte) error {
+	return {{$fromString}}(string(text))
+}
+{{end}}
+
+{{if .MarshalJSON}}
+func (v {{$type}}) MarshalJSON() ([]byte, error) {
+	return json.Marshal(v.String())
+}
+{{end}}
+
+{{if .UnmarshalJSON}}
+func (v {{$type}}) UnmarshalJSON(text []byte) error {
+	var str string
+	if err := json.Unmarshal(&str, string(text)); err != nil {
+		return fmt.Errorf("unmarshaling json to {{$nameLower}} but it is not a string: %w", err)
+	}
+	
+	return {{$fromString}}(text)
+}
+{{end}}
 `
 
 var (
@@ -202,6 +243,11 @@ var (
 	values      = flag.String("values", "", "values comma separated")
 	variants    = &VariantsFlag{}
 	logrus      = flag.Bool("logrus", false, "use logrus.Fatal instead of panic")
+
+	marshalText   = flag.Bool("marshalText", false, "generate implementation for encoding.TextMarshaler")
+	unmarshalText = flag.Bool("unmarshalText", false, "generate implementation for encoding.TextUnmarshaler")
+	marshalJSON   = flag.Bool("marshalJSON", false, "generate implementation for json.Marshaler")
+	unmarshalJSON = flag.Bool("unmarshalJSON", false, "generate implementation for json.Unmarshaler")
 )
 
 func dieOnErr(err error) {
@@ -215,19 +261,27 @@ func main() {
 	flag.Parse()
 
 	data := struct {
-		Package  string
-		Name     string
-		Output   string
-		Values   []string
-		Variants []Variant
-		Logrus   bool
+		Package       string
+		Name          string
+		Output        string
+		Values        []string
+		Variants      []Variant
+		Logrus        bool
+		MarshalText   bool
+		UnmarshalText bool
+		MarshalJSON   bool
+		UnmarshalJSON bool
 	}{
-		Package:  *packageName,
-		Name:     *name,
-		Output:   *output,
-		Values:   strings.Split(*values, ","),
-		Variants: *variants,
-		Logrus:   *logrus,
+		Package:       *packageName,
+		Name:          *name,
+		Output:        *output,
+		Values:        strings.Split(*values, ","),
+		Variants:      *variants,
+		Logrus:        *logrus,
+		MarshalText:   *marshalText,
+		UnmarshalText: *unmarshalText,
+		MarshalJSON:   *marshalJSON,
+		UnmarshalJSON: *unmarshalJSON,
 	}
 
 	capLower := func(s string) string {

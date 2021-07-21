@@ -9,13 +9,23 @@ $ go get github.com/eliaperantoni/enumero
 ## Usage
 ```shell
 $ enumero --help
-Usage of ./enumero:
+Usage of enumero:
+  -logrus
+        use logrus.Fatal instead of panic
+  -marshalJSON
+        generate implementation for json.Marshaler
+  -marshalText
+        generate implementation for encoding.TextMarshaler
   -name string
         name of the enum (default "Enum")
   -output string
         output file path (default "./%s_enumero.go")
   -package string
         name of the generated package (default "enums")
+  -unmarshalJSON
+        generate implementation for json.Unmarshaler
+  -unmarshalText
+        generate implementation for encoding.TextUnmarshaler
   -values string
         values comma separated
   -variant value
