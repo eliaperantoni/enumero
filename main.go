@@ -21,10 +21,6 @@ import "errors"
 import "github.com/sirupsen/logrus"
 {{end}}
 
-{{if or .MarshalText .UnmarshalText}}
-import "encoding"
-{{end}}
-
 {{if or .MarshalJSON .UnmarshalJSON}}
 import "encoding/json"
 {{end}}
@@ -213,8 +209,13 @@ func (v {{$type}}) MarshalText() ([]byte, error) {
 {{end}}
 
 {{if .UnmarshalText}}
-func (v *{{$type}}) UnmarshalText(text []byte) error {
-	return {{$fromString}}(string(text))
+func (v *{{$type}}) UnmarshalText(data []byte) error {
+	if vUnmarshaled, err := {{$fromString}}(string(data)); err != nil {
+		return err
+	} else {
+		*v = vUnmarshaled
+		return nil
+	}
 }
 {{end}}
 
@@ -225,13 +226,18 @@ func (v {{$type}}) MarshalJSON() ([]byte, error) {
 {{end}}
 
 {{if .UnmarshalJSON}}
-func (v {{$type}}) UnmarshalJSON(text []byte) error {
+func (v *{{$type}}) UnmarshalJSON(data []byte) error {
 	var str string
-	if err := json.Unmarshal(&str, string(text)); err != nil {
+	if err := json.Unmarshal(data, &str); err != nil {
 		return fmt.Errorf("unmarshaling json to {{$nameLower}} but it is not a string: %w", err)
 	}
 	
-	return {{$fromString}}(text)
+	if vUnmarshaled, err := {{$fromString}}(str); err != nil {
+		return err
+	} else {
+		*v = vUnmarshaled
+		return nil
+	}
 }
 {{end}}
 `
