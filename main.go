@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
 	"log"
@@ -248,6 +249,7 @@ var (
 	name        = flag.String("name", "Enum", "name of the enum")
 	values      = flag.String("values", "", "values comma separated")
 	variants    = &VariantsFlag{}
+	sourceFile  = flag.String("source", "", "source file to use for values and variants")
 	logrus      = flag.Bool("logrus", false, "use logrus.Fatal instead of panic")
 
 	marshalText   = flag.Bool("marshalText", false, "generate implementation for encoding.TextMarshaler")
@@ -272,6 +274,7 @@ func main() {
 		Output        string
 		Values        []string
 		Variants      []Variant
+		SourceFile    string
 		Logrus        bool
 		MarshalText   bool
 		UnmarshalText bool
@@ -283,11 +286,20 @@ func main() {
 		Output:        *output,
 		Values:        strings.Split(*values, ","),
 		Variants:      *variants,
+		SourceFile:    *sourceFile,
 		Logrus:        *logrus,
 		MarshalText:   *marshalText,
 		UnmarshalText: *unmarshalText,
 		MarshalJSON:   *marshalJSON,
 		UnmarshalJSON: *unmarshalJSON,
+	}
+
+	if data.SourceFile != "" {
+		values, variants, err := readSourceFile(data.SourceFile)
+		dieOnErr(err)
+
+		data.Values = values
+		data.Variants = variants
 	}
 
 	capLower := func(s string) string {
@@ -348,4 +360,52 @@ func main() {
 
 	err = cmd.Wait()
 	dieOnErr(err)
+}
+
+func readSourceFile(path string) ([]string, []Variant, error) {
+	wrapErr := func(err error) error {
+		return fmt.Errorf("reading data from source file: %w", err)
+	}
+
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, nil, wrapErr(err)
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+
+	var (
+		values   []string
+		variants []Variant
+	)
+
+	for isHeader := true; scanner.Scan(); isHeader = false {
+		line := scanner.Text()
+
+		fields := strings.Split(line, ",")
+		for i, field := range fields {
+			fields[i] = strings.TrimSpace(field)
+		}
+
+		if isHeader {
+			for _, field := range fields[1:] {
+				variants = append(variants, Variant{
+					Name: field,
+				})
+			}
+		} else {
+			values = append(values, fields[0])
+
+			for i, field := range fields[1:] {
+				variants[i].Values = append(variants[i].Values, field)
+			}
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, nil, wrapErr(err)
+	}
+
+	return values, variants, nil
 }

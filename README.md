@@ -22,6 +22,8 @@ Usage of enumero:
         output file path (default "./%s_enumero.go")
   -package string
         name of the generated package (default "enums")
+  -source string
+        source file to use for values and variants
   -unmarshalJSON
         generate implementation for json.Unmarshaler
   -unmarshalText
@@ -87,3 +89,20 @@ Green
 Rot
 Blue
 ```
+
+### Source
+For very big enums, a source file can be provided instead of listing all values and variants.
+
+It is expected to look like this:
+
+```
+,German
+Red,Rot
+Green,Grün
+Blue,Blau
+```
+
+That is: the first line is the header and contains an empty string (marking the column of primary values) followed by
+the names of the variants.
+
+Each following line contains a single value and its corresponding variants.
